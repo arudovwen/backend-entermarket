@@ -109,27 +109,18 @@ class CartService
       "location" => $location
     ];
   }
-  public function update($action, $cart)
+  public function update($quantity, $cart)
   {
 
     try {
-      if ($action === 'plus') {
+
          $product = Product::find($cart->product_id);
-        if ($product->in_stock <=  $cart->quantity)  return response(['message' => 'Out of stock'],400);
+        if ($product->in_stock <=  $quantity)  return response(['message' => 'Out of stock'],400);
 
-        $cart->quantity =  $cart->quantity + 1;
+        $cart->quantity = $quantity;
         $cart->save();
-      }
-      if ($action === 'subtract') {
 
 
-        if ($cart->quantity > 1) {
-          $cart->quantity =  $cart->quantity - 1;
-          $cart->save();
-        } else {
-          $cart->delete();
-        }
-      }
       if ($cart) {
         return $cart;
       }

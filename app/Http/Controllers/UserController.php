@@ -42,7 +42,7 @@ class UserController extends Controller
                 'firstName' => 'required| alpha_num',
                 'lastName' => 'required| alpha_num',
                 'email' => 'bail|required|unique:users|email:rfc,dns',
-                'password' => 'required|min:6|alpha_dash',
+                'password' => 'required|min:6',
                 'phoneNumber' => 'bail|required|unique:users|min:11|numeric'
             ]);
 
@@ -80,7 +80,7 @@ class UserController extends Controller
 
             $detail = [
                 'message' => 'Welcome to my EnterMarket',
-                'url' => 'http://entermarket.net'
+                'url' => 'https://entermarket.net'
             ];
             $user->notify(new NewUser($detail));
 
@@ -108,7 +108,7 @@ class UserController extends Controller
 
         $validator = Validator::make($request->all(), [
             'email' => 'bail|required|email:rfc,dns',
-            'password' => 'required|min:6|alpha_dash',
+            'password' => 'required|min:6',
         ]);
 
         if ($validator->fails()) {
@@ -143,14 +143,14 @@ class UserController extends Controller
                 }
             }
 
-          $response =  Http::post('https://apis.payviame.com/api/auth/login', $data);
-          if($response->json()['status']== 'error') return response()->json([
-                "success" => false,
-                "message" => 'token error',
+            //   $response =  Http::post('https://apis.payviame.com/api/auth/login', $data);
+            //   if($response->json()['status']== 'error') return response()->json([
+            //         "success" => false,
+            //         "message" => 'token error',
 
-            ], 422);
-            $payviame_token = $response->json()['access_token'];
-
+            //     ], 422);
+            // $payviame_token = $response->json()['access_token'];
+            $payviame_token = 'token';
 
             return $this->respondWithToken($accessToken, $payviame_token, $responseMessage, auth()->user());
         } else {
@@ -223,7 +223,7 @@ class UserController extends Controller
     public function postEmail(Request $request)
     {
         $request->validate([
-          'email' => 'bail|required|email:rfc,dns',
+            'email' => 'bail|required|email:rfc,dns',
 
         ]);
 

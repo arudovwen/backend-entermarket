@@ -227,7 +227,7 @@ class BankDetailController extends Controller
                                 $body
                             );
 
-                            if ($response->status() !== 200 && $response->status() !== 201) {
+                            if ($response->status() !== 200 && $response->status() !== 201 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -257,7 +257,7 @@ class BankDetailController extends Controller
                                 'https://apis.payviame.com/api/buy-data-2',
                                 $body
                             );
-                            if ($response->status() !== 200) {
+                            if ($response->status() !== 200 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -287,7 +287,7 @@ class BankDetailController extends Controller
                                 'https://apis.payviame.com/api/buy-electricity',
                                 $body
                             );
-                            if ($response->status() !== 200) {
+                            if ($response->status() !== 200 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -317,7 +317,7 @@ class BankDetailController extends Controller
                                 'https://apis.payviame.com/api/buy-internet',
                                 $body
                             );
-                            if ($response->status() !== 200) {
+                            if ($response->status() !== 200 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -348,7 +348,7 @@ class BankDetailController extends Controller
                                 'https://apis.payviame.com/api/buy-tv',
                                 $body
                             );
-                            if ($response->status() !== 200) {
+                            if ($response->status() !== 200 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -378,7 +378,7 @@ class BankDetailController extends Controller
                                 'https://apis.payviame.com/api/bet',
                                 $body
                             );
-                            if ($response->status() !== 200) {
+                            if ($response->status() !== 200 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -408,7 +408,7 @@ class BankDetailController extends Controller
                                 'https://apis.payviame.com/api/buy-data',
                                 $body
                             );
-                            if ($response->status() !== 200) {
+                            if ($response->status() !== 200 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -438,7 +438,7 @@ class BankDetailController extends Controller
                                 'https://apis.payviame.com/api/buy-data',
                                 $body
                             );
-                            if ($response->status() !== 200) {
+                            if ($response->status() !== 200 && $response->status() !== 201) {
                                 return response(['message' => $response['message']], 500);
                             }
                             $responsedata = $response->json();
@@ -493,7 +493,7 @@ class BankDetailController extends Controller
             'Authorization' => 'Bearer ' . $token,
             'Accept' => 'application/json'
         ])->post('https://apis.payviame.com/api/auth/refresh');
-        if ($response->status() !== 200) {
+        if ($response->status() !== 200 && $response->status() !== 201) {
             return response(['message' => $response['message']], 500);
         }
         return  $responsedata = $response->json()['access_token'];

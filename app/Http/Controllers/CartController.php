@@ -80,7 +80,7 @@ class CartController extends Controller
     {
 
 
-        return $this->cartservice->update($request->action, $cart);
+        return $this->cartservice->update($request->quantity, $cart);
     }
 
     /**

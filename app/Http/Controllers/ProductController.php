@@ -31,11 +31,24 @@ class ProductController extends Controller
 
     public function allstoreproducts(Request $request)
     {
-        $product = Product::with('store', 'category', 'brand')->where('store_id', $request->store_id)->where('active', 1)->latest()->get();
+
+        $brand = $request->query->get('brand');
+        $category = $request->query->get('category');
+        $product = Product::with('store', 'category', 'brand')->where('store_id', $request->store_id)->where('active', 1)
+            ->where(function ($query) use ($category) {
+                if ($category) {
+                    return $query->where('category_id', $category);
+                }
+            })->where(function ($query) use ($brand) {
+                if ($brand) {
+                    return $query->where('brand_id', $brand);
+                }
+            })->latest()->get();
         return ProductResource::collection($product->values()->paginate(20));
     }
-    public function searchproducts(Request $request){
-        if(is_null($request['query'])){
+    public function searchproducts(Request $request)
+    {
+        if (is_null($request['query'])) {
             $product = Product::with('store', 'category', 'brand')->where('store_id', $request->store_id)->where('active', 1)->latest()->get();
             return ProductResource::collection($product->values()->paginate(20));
         }
@@ -64,7 +77,7 @@ class ProductController extends Controller
     {
 
 
-         $store = auth('store_api')->user();
+        $store = auth('store_api')->user();
         $products = $store->products()->createMany($request->all());
         return $products->load('store', 'category', 'brand');
     }
@@ -101,7 +114,7 @@ class ProductController extends Controller
             $product->product_no = $request->product_no;
         }
 
-         if (!empty($request->input('weight')) && $request->filled('weight')  && $request->has('weight')) {
+        if (!empty($request->input('weight')) && $request->filled('weight')  && $request->has('weight')) {
             $product->weight = $request->weight;
         }
 
@@ -115,7 +128,9 @@ class ProductController extends Controller
         $product = Product::find($id);
         $similar = Product::with('store', 'category', 'brand')->where(strtolower('product_name'), 'like', '%' . strtolower($product->product_name) . '%')
             ->orWhere('brand_id', $product->brand_id)->orWhere('category_id', $product->category_id)->inRandomOrder()->get();
-         return $similar->filter(function ($a) use($id){return $a['id'] != $id;})->values()->all();
+        return $similar->filter(function ($a) use ($id) {
+            return $a['id'] != $id;
+        })->values()->all();
     }
 
     public function destroy(Product $product)
