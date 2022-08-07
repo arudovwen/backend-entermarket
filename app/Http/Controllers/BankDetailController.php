@@ -108,29 +108,44 @@ class BankDetailController extends Controller
                 'amount' => $amount,
 
             ];
+            if ($request->mode == 'paystack') {
+                $response =  Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $this->api_key,
+                ])->post(
+                    'https://api.paystack.co/transaction/initialize',
+                    $body
+                );
+                $responsedata = $response->json()['data'];
 
-            $response =  Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->api_key,
-            ])->post(
-                'https://api.paystack.co/transaction/initialize',
-                $body
-            );
-            $responsedata = $response->json()['data'];
+                $result =   $this->user->transactions()->create([
+                    'reference' => $responsedata['reference'],
+                    'message' => 'pending',
+                    'status' => 'pending',
+                    'trxref' =>  $responsedata['access_code'],
+                    'redirecturl' =>  $responsedata['authorization_url'],
+                    'order_id' => $order_no,
+                    'amount' => $amount,
+                    'mode' => $request->mode,
+                    'type' => 'online'
 
-            $result =   $this->user->transactions()->create([
-                'reference' => $responsedata['reference'],
-                'message' => 'pending',
-                'status' => 'pending',
-                'trxref' =>  $responsedata['access_code'],
-                'redirecturl' =>  $responsedata['authorization_url'],
-                'order_id' => $order_no,
-                'amount' => $amount,
-                'mode' => 'paystack',
-                'type' => 'online'
+                ]);
 
-            ]);
+                return $responsedata;
+            }
+            if ($request->mode == 'flutterwave') {
+             return   $result =   $this->user->transactions()->create([
+                    'reference' => $request['tx_ref'],
+                    'message' => 'pending',
+                    'status' => 'pending',
+                    'trxref' =>  $request['tx_ref'],
+                    'redirecturl' =>  'url',
+                    'order_id' => $order_no,
+                    'amount' => $amount,
+                    'mode' => $request->mode,
+                    'type' => 'online'
 
-            return $responsedata;
+                ]);
+            }
         });
     }
 
@@ -138,17 +153,11 @@ class BankDetailController extends Controller
     {
 
         return  DB::transaction(function () use ($reference) {
-            $response =  Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->api_key,
-            ])->get(
-                'https://api.paystack.co/transaction/verify/' . $reference
-            );
+            $transaction = Transaction::where('reference', $reference)->first();
+            $payment = Payment::where('reference', $reference)->first();
 
 
-            if ($response->json()['status'] && strtolower($response->json()['message']) == 'verification successful') {
 
-                $transaction = Transaction::where('reference', $reference)->first();
-                $payment = Payment::where('reference', $reference)->first();
                 if ($transaction) {
                     if (strtolower($transaction->message) === 'verification successful') {
                         return response()->json([
@@ -158,11 +167,11 @@ class BankDetailController extends Controller
                             'type' => 'order'
                         ]);
                     }
-                    $transaction->message = $response->json()['message'];
-                    $transaction->status = $response->json()['status'];
+                    $transaction->message = 'verification successful';
+                    $transaction->status = 'success';
                     $transaction->save();
 
-                    if ($response->json()['status'] == 'success') {
+                 //   if ($response->json()['status'] == 'success') {
                         $orders = Order::where('order_no', $transaction->order_id)->get();
                         $firstorder = $orders[0];
                         foreach ($orders as $order) {
@@ -193,12 +202,12 @@ class BankDetailController extends Controller
 
                         $user->notify(new OrderCreated($detail));
                         $admin->notify(new NewOrderAlert($details));
-                    } else {
-                        $order = Order::find($transaction->order_id);
-                        $order->payment_status = 'failed';
-                        $order->save();
-                        StoreOrder::where('order_no', $order->order_no)->update(['payment_status' => 'failed']);
-                    }
+                    // } else {
+                    //     $order = Order::find($transaction->order_id);
+                    //     $order->payment_status = 'failed';
+                    //     $order->save();
+                    //     StoreOrder::where('order_no', $order->order_no)->update(['payment_status' => 'failed']);
+                    // }
 
                     return response()->json([
                         'status' => true,
@@ -478,11 +487,7 @@ class BankDetailController extends Controller
                         'message' => 'Invalid reference'
                     ]);
                 }
-            }
-            $result = [
-                'status' => false,
-                'message' => 'Transaction failed'
-            ];
+
         });
     }
 

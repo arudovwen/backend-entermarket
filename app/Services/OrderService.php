@@ -39,7 +39,7 @@ class OrderService
     $payment_method,
     $title,
     $delivery_method,
-
+    $tx_ref, $mode
   ) {
 
     // try {
@@ -56,7 +56,7 @@ class OrderService
       $payment_method,
       $title,
       $delivery_method,
-
+      $tx_ref, $mode
     ) {
       $cartservice = new CartService;
       $usercart =  $cartservice->getCart($user)['cart'];
@@ -254,7 +254,9 @@ class OrderService
       $myrequest->request->add([
         'amount' => $grand_total,
         'email' => $user->email,
-        'order_id' => $order->id
+        'order_id' => $order->id,
+        'tx_ref' =>  $tx_ref,
+        'mode' => $mode
       ]);
 
 
@@ -293,7 +295,8 @@ class OrderService
     $payment_method,
     $title,
     $delivery_method,
-
+    $coupon,
+    $tx_ref, $mode
   ) {
 
 
@@ -310,6 +313,7 @@ class OrderService
       $payment_method,
       $title,
       $delivery_method,
+      $tx_ref, $mode
 
     ) {
       $cartservice = new CartService;
@@ -326,6 +330,7 @@ class OrderService
           401
         );
       }
+
       if ($delivery_method === 'home') {
         $total = ($cartservice->total($user)['total']) * count($allAddress);
         $singleordertotal = $cartservice->total($user)['total'];
@@ -504,16 +509,15 @@ class OrderService
 
 
 
-
-
       $myrequest = new Request();
       $myrequest->setMethod('POST');
-      $myrequest->request->add([
+         $myrequest->request->add([
         'amount' => $grand_total,
         'email' => $user->email,
-        'order_id' => $order->id
+        'order_id' => $order->id,
+        'tx_ref' =>  $tx_ref,
+        'mode' => $mode
       ]);
-
 
       $payment  = new BankDetailController();
       $payment_data = $payment->makepayment($myrequest);
@@ -528,7 +532,7 @@ class OrderService
         [
           'status' => true,
           'message' => 'order created',
-          'data' => $payment_data,
+          // 'data' => $payment_data,
           'order' => $order
         ],
         201

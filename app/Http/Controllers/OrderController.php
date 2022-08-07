@@ -58,7 +58,7 @@ class OrderController extends Controller
                 //check coupon code
                 $coupon = $request->coupon;
                 $usercoupon = Coupon::where('code', $coupon)->where('status', 'active')->where('available', '>', 0)->first();
-                if(!is_null($usercoupon)){
+                if (!is_null($usercoupon)) {
                     $check  = CouponUser::where('user_id', $this->user->id)->where('coupon_id', $usercoupon->id)->first();
 
                     if (!is_null($usercoupon && is_null($check))) {
@@ -94,6 +94,8 @@ class OrderController extends Controller
                 $request->title,
                 $request->deliverymethod,
                 $request->coupon ? $request->coupon : null,
+                $request->tx_ref,
+                $request->mode
 
             );
         });
@@ -145,6 +147,8 @@ class OrderController extends Controller
                 $request->title,
                 $request->deliverymethod,
                 $request->coupon ? $request->coupon : null,
+                $request->tx_ref,
+                $request->mode
 
             );
         });
