@@ -40,6 +40,7 @@ class Store extends Authenticatable
     {
         return $this->hasMany(Product::class);
     }
+   
     public function categories()
     {
         return $this->hasMany(Category::class);
@@ -51,7 +52,7 @@ class Store extends Authenticatable
 
     public function storeorders()
     {
-        return $this->hasMany(StoreOrder::class);
+        return $this->hasMany(StoreOrder::class)->where('payment_status', 'paid');
     }
 
     protected $hidden = [

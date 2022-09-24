@@ -384,10 +384,6 @@ class UserController extends Controller
     public function update(User $user, Request $request)
     {
         $user = auth('api')->user();
-        $year = $request->year;
-        $month = $request->month;
-        $day = $request->date;
-        $dob = Carbon::createFromDate($request->year, $request->month, $request->date, 'Africa/Lagos')->format('d/m/Y');
 
         if ($request->has('firstName') && $request->filled('firstName') && !is_null($request->input('firstName'))) {
             $user->firstName = $request->firstName;
@@ -403,7 +399,7 @@ class UserController extends Controller
             $user->address  = $request->address;
         }
         if ($request->has('dob') && $request->filled('dob') && !is_null($request->input('dob'))) {
-            $user->dob = $dob;
+            $user->dob =  $request->dob;
         }
         if ($request->has('gender') && $request->filled('gender') && !is_null($request->input('gender'))) {
             $user->gender = $request->gender;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\StoreOrder;
 use App\Models\Coupon;
 use App\Models\CouponUser;
 use Illuminate\Http\Request;
@@ -27,6 +28,23 @@ class OrderController extends Controller
         return $this->user->orders()->with('orderhistories', 'orderinfo')->where('payment_status', 'paid')->latest()->get();
     }
 
+    public function cancelOrder($ref)
+    {
+        $orders = Order::where("ref", $ref)->get();
+        $firstorder = $orders[0];
+        foreach ($orders as $order) {
+            $order->payment_status = 'cancelled';
+            $order->save();
+        }
+
+        $StoreOrders = StoreOrder::where('name', $firstorder->name)->get();
+        foreach ($StoreOrders as $StoreOrder) {
+            $StoreOrder->payment_status = 'cancelled';
+            $StoreOrder->save();
+        }
+        return "success";
+    }
+
     public function adminindex()
     {
         return OrderResource::collection(Order::with('orderhistories', 'orderinfo')->where('payment_status', 'paid')->latest()->paginate(20));
@@ -34,6 +52,14 @@ class OrderController extends Controller
     public function adminorderspending()
     {
         return Order::with('orderhistories', 'orderinfo')->where('status', 'pending')->where('payment_status', 'paid')->latest()->paginate(20);
+    }
+    public function adminordersfailed()
+    {
+        return Order::with('orderhistories', 'orderinfo')->where('status', 'failed')->where('payment_status', 'paid')->latest()->paginate(20);
+    }
+    public function adminorderscompleted()
+    {
+        return Order::with('orderhistories', 'orderinfo')->where('status', 'delivered')->where('payment_status', 'paid')->latest()->paginate(20);
     }
     public function adminordersassigned()
     {
@@ -288,5 +314,38 @@ class OrderController extends Controller
         $start = $request->start;
         $end = $request->end;
         return   OrderResource::collection(Order::whereBetween('created_at', [$start, $end])->where('status', 'assigned')->with('orderhistories', 'orderinfo')->paginate(20));
+    }
+
+    public function searchfailedorder(Request $request)
+    {
+        $query = $request->get('query');
+        if (!is_null($query)) {
+            return  OrderResource::collection(Order::whereLike('order_no', $query)->orWhere('name', 'LIKE', "%{$query}%")->orWhere('weight', $query)->where('status', 'failed')->with('orderhistories', 'orderinfo')->paginate(20));
+        }
+        return OrderResource::collection(Order::with('orderhistories', 'orderinfo')->where('status', 'failed')->where('payment_status', 'paid')->latest()->paginate(20));
+    }
+    public function searchfailedbydate(Request $request)
+    {
+        $start = $request->start;
+        $end = $request->end;
+
+        return   OrderResource::collection(Order::whereBetween('created_at', [$start, $end])->where('status', 'failed')->with('orderhistories', 'orderinfo')->paginate(20));
+    }
+
+
+    public function searchcompletedorder(Request $request)
+    {
+        $query = $request->get('query');
+        if (!is_null($query)) {
+            return  OrderResource::collection(Order::whereLike('order_no', $query)->orWhere('name', 'LIKE', "%{$query}%")->orWhere('weight', $query)->where('status', 'delivered')->with('orderhistories', 'orderinfo')->paginate(20));
+        }
+        return OrderResource::collection(Order::with('orderhistories', 'orderinfo')->where('status', 'delivered')->where('payment_status', 'paid')->latest()->paginate(20));
+    }
+    public function searchcompletedbydate(Request $request)
+    {
+        $start = $request->start;
+        $end = $request->end;
+
+        return   OrderResource::collection(Order::whereBetween('created_at', [$start, $end])->where('status', 'delivered')->with('orderhistories', 'orderinfo')->paginate(20));
     }
 }

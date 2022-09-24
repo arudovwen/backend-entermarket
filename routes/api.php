@@ -18,6 +18,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\LgaPriceController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\BankDetailController;
+use App\Http\Controllers\LogisticController;
 use App\Http\Controllers\StoreOrderController;
 use App\Http\Controllers\SocialLoginController;
 use App\Http\Controllers\TransactionController;
@@ -49,6 +50,8 @@ Route::middleware('auth:admin_api')->group(function () {
     Route::get('admin/get/orders', [OrderController::class, 'adminindex']);
     Route::get('admin/get/assigned/orders', [OrderController::class, 'adminordersassigned']);
     Route::get('admin/get/pending/orders', [OrderController::class, 'adminorderspending']);
+    Route::get('admin/get/completed/orders', [OrderController::class, 'adminorderscompleted']);
+    Route::get('admin/get/failed/orders', [OrderController::class, 'adminordersfailed']);
     // Route::put('admin/update/order/status/{order}', [OrderController::class, 'updateorderstatus']);
     Route::put('admin/update/order/status/{order}', [OrderController::class, 'assignlogistic']);
     Route::get('queryorder/{order}', [OrderController::class, 'queryorder']);
@@ -76,6 +79,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::apiResource('user/order/histories', OrderHistoryController::class);
     Route::apiResource('user/orders', OrderController::class);
     Route::post('web-user/orders', [OrderController::class, 'webstore']);
+    Route::get('cancel-order/{ref}', [OrderController::class, 'cancelOrder']);
 
 
 
@@ -124,6 +128,7 @@ Route::get('store/categories/{store}', [StoreController::class, 'getstorecategor
 Route::post('store/login', [StoreController::class, 'login']);
 Route::post('get/stores', [StoreController::class, 'getallstores']);
 Route::post('search/stores', [StoreController::class, 'searchstores']);
+Route::post('search/site', [StoreController::class, 'searchsite']);
 Route::middleware('auth:store_api')->post('store/update', [StoreController::class, 'update']);
 Route::middleware('auth:store_api')->get('store/report', [StoreOrderController::class, 'gettotals']);
 Route::middleware('auth:store_api')->get('store/earnings', [StoreOrderController::class, 'getearnings']);
@@ -207,6 +212,12 @@ Route::get('search/pending/order', [OrderController::class, 'searchpendingorder'
 Route::post('search/pending/order-by-date', [OrderController::class, 'searchpendingbydate']);
 Route::get('search/assigned/order', [OrderController::class, 'searchassignedorder']);
 Route::post('search/assigned/order-by-date', [OrderController::class, 'searchassignedbydate']);
+Route::get('search/failed/order', [OrderController::class, 'searchfailedorder']);
+Route::post('search/failed/order-by-date', [OrderController::class, 'searchfailedbydate']);
+
+Route::get('search/completed/order', [OrderController::class, 'searchcompletedorder']);
+Route::post('search/completed/order-by-date', [OrderController::class, 'searchcompletedbydate']);
+
 
 
 
@@ -231,6 +242,7 @@ Route::post('get/coordinates', [UserController::class, 'getcoordinates']);
 Route::get('get-lgas', [LgaPriceController::class, 'index']);
 Route::post('add-lga', [LgaPriceController::class, 'addlga']);
 Route::delete('delete-lga/{lga}', [LgaPriceController::class, 'deletelga']);
+Route::put('update-lga/{lga}', [LgaPriceController::class, 'updatelga']);
 
 
 Route::get('get-lga-prices/{id}', [LgaPriceController::class, 'getlgaprices']);
@@ -238,3 +250,5 @@ Route::get('get-lga-price/{id}/{storeId}', [LgaPriceController::class, 'getlgapr
 
 Route::apiResource('lga-prices', LgaPriceController::class);
 Route::get('mark-order-complete/{id}', [StoreController::class, 'markorder']);
+
+Route::apiResource('logistics', LogisticController::class);

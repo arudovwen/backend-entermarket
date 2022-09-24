@@ -39,7 +39,8 @@ class OrderService
     $payment_method,
     $title,
     $delivery_method,
-    $tx_ref, $mode
+    $tx_ref,
+    $mode
   ) {
 
     // try {
@@ -56,7 +57,8 @@ class OrderService
       $payment_method,
       $title,
       $delivery_method,
-      $tx_ref, $mode
+      $tx_ref,
+      $mode
     ) {
       $cartservice = new CartService;
       $usercart =  $cartservice->getCart($user)['cart'];
@@ -296,7 +298,8 @@ class OrderService
     $title,
     $delivery_method,
     $coupon,
-    $tx_ref, $mode
+    $tx_ref,
+    $mode
   ) {
 
 
@@ -313,11 +316,13 @@ class OrderService
       $payment_method,
       $title,
       $delivery_method,
-      $tx_ref, $mode
+      $tx_ref,
+      $mode
 
     ) {
       $cartservice = new CartService;
       $usercart =  $cartservice->getCart($user)['cart'];
+      $store_id =  $usercart[0]->store_id;
       $isScheduled = false;
 
       if (!count($usercart)) {
@@ -375,7 +380,8 @@ class OrderService
             'schedule_time' => $address['schedule_time'],
             'items' => $items,
             'shipping_method' => $address['shipping'],
-            'weight' => $weight
+            'weight' => $weight,
+            'ref'=> $tx_ref,
 
           ]);
 
@@ -388,7 +394,20 @@ class OrderService
             $a['order_id'] = $order->id;
             return $a;
           }, $usercart->toArray());
-          $user->storeorder()->createMany($mappedarray);
+          $user->storeorder()->create([
+            'order_no' => $order_no,
+            'order_id' => $order->id,
+            'name' => $name,
+            'quantity' => $items,
+            'price' => $singleordertotal,
+            'subtotal' => $singleordertotal,
+            'store_id' => $store_id,
+            'payment_status' => 'pending',
+            'status' => 'pending',
+            'product_id' => 1
+
+
+          ]);
           $this->reducequantity($usercart);
 
 
@@ -470,7 +489,8 @@ class OrderService
           'schedule_time' => null,
           'items' => $items,
           'shipping_method' => 'pickup',
-          'weight' => $weight
+          'weight' => $weight,
+          'ref'=> $tx_ref,
 
         ]);
 
@@ -481,7 +501,19 @@ class OrderService
           $a['order_id'] = $order->id;
           return $a;
         }, $usercart->toArray());
-        $user->storeorder()->createMany($mappedarray);
+        // $user->storeorder()->createMany($mappedarray);
+        $user->storeorder()->create([
+          'order_no' => $order_no,
+          'order_id' => $order->id,
+          'name' => $name,
+          'quantity' => $items,
+          'price' => $singleordertotal,
+          'subtotal' => $singleordertotal,
+          'store_id' => $store_id,
+          'payment_status' => 'pending',
+          'status' => 'pending',
+          'product_id' => 1
+        ]);
         $this->reducequantity($usercart);
 
 
@@ -511,7 +543,7 @@ class OrderService
 
       $myrequest = new Request();
       $myrequest->setMethod('POST');
-         $myrequest->request->add([
+      $myrequest->request->add([
         'amount' => $grand_total,
         'email' => $user->email,
         'order_id' => $order->id,
@@ -521,7 +553,6 @@ class OrderService
 
       $payment  = new BankDetailController();
       $payment_data = $payment->makepayment($myrequest);
-
 
 
       // clear cart

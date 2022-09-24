@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Auth;
 use Mail;
 use Validator;
+use Spatie\Geocoder\Geocoder;
 use App\Models\Store;
 use App\Models\StoreOrder;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class StoreController extends Controller
     }
     public function getstores()
     {
-        return  StoreResource::collection(Store::get());
+        return  StoreResource::collection(Store::with('products', 'storeorders')->paginate(20));
     }
 
 
@@ -67,6 +68,7 @@ class StoreController extends Controller
     public function update(Request $request)
     {
         $store = auth('store_api')->user();
+       
         try {
             if ($request->has('name') && $request->filled('name')) {
                 $store->name = $request->name;
@@ -74,6 +76,28 @@ class StoreController extends Controller
 
             if ($request->has('status') && $request->filled('status')) {
                 $store->status = $request->status;
+            }
+            if ($request->has('email') && $request->filled('email')) {
+                $store->email = $request->email;
+            }
+            if ($request->has('location') && $request->filled('location')) {
+                $client = new \GuzzleHttp\Client();
+                $geocoder = new Geocoder($client);
+                $geocoder->setApiKey(config('geocoder.key'));
+                // $geocoder->setCountry(config('geocoder.country', 'Nigeria'));
+               $response = $geocoder->getCoordinatesForAddress($request->location);
+            
+                $store->location = $request->location;
+              
+                $store->lat =$response['lat'];
+                $store->long = $response['lng'];
+                $store->place =  $response['address_components'][2]->long_name;
+            }
+            if ($request->has('image') && $request->filled('image')) {
+                $store->image = $request->image;
+            }
+            if ($request->has('lga_id') && $request->filled('lga_id')) {
+                $store->lga_id = $request->lga_id;
             }
 
             $store->save();
@@ -193,7 +217,12 @@ class StoreController extends Controller
 
         return $this->storeservice->searchstores($request);
     }
+    public function searchsite(Request $request)
+    {
 
+        return $this->storeservice->searchsite($request);
+    }
+    
     public function changestatus(Request $request, $id)
     {
         $store = Store::find($id);
@@ -208,7 +237,7 @@ class StoreController extends Controller
 
     public function markorder($id){
         $storeorder = StoreOrder::find($id);
-        $storeorder->status = 'completed';
+        $storeorder->status = 'delivered';
         $storeorder->save();
     }
 }

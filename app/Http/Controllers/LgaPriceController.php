@@ -88,6 +88,17 @@ class LgaPriceController extends Controller
             ]
         );
     }
+    
+    public function updatelga(Request $request, Lga $lga)
+    {
+
+        if ($request->has('lga') && $request->filled('lga')) {
+            $lga->lga =  $request->lga;
+        }
+
+        $lga->save();
+        return $lga;
+    }
     public function update(Request $request, LgaPrice $lga_price)
     {
 
@@ -111,7 +122,8 @@ class LgaPriceController extends Controller
         return response('ok');
     }
     public function deletelga(Lga $lga)
-    {$lga->delete();
+    {
+        $lga->delete();
         return response('ok');
     }
 }

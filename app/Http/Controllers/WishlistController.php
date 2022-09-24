@@ -40,9 +40,10 @@ class WishlistController extends Controller
         $wishlist->delete();
         return $this->response_success('removed');
     }
-    public function destroyitem(WishlistItem $wishlistItem)
+    public function destroyitem( $id)
     {
-        $wishlistItem->delete();
+        WishlistItem::find($id)->delete();
+       
         return $this->response_success('removed');
     }
 

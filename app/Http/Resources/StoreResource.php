@@ -12,6 +12,11 @@ class StoreResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|\JsonSerializable
      */
+    // public function getprice(val){
+    //   array_map(function($a){
+    //     return $a['subtotal'];
+    //   }, val);
+    // }
     public function toArray($request)
     {
         return [
@@ -21,7 +26,10 @@ class StoreResource extends JsonResource
             'image' => $this->image,
             'location' => $this->location,
             'name' => $this->name,
-            'status' => $this->status
+            'status' => $this->status,
+            'products' => count($this->products),
+            'storeorders' => collect($this->storeorders)->count(),
+            'price'=> collect($this->storeorders)->sum('subtotal')
         ];
     }
 }

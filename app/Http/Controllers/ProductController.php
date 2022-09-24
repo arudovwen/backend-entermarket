@@ -34,7 +34,10 @@ class ProductController extends Controller
 
         $brand = $request->query->get('brand');
         $category = $request->query->get('category');
-        $product = Product::with('store', 'category', 'brand')->where('store_id', $request->store_id)->where('active', 1)
+        $product = Product::with('store', 'category', 'brand')
+            ->where('in_stock', '>', 1)
+            ->where('store_id', $request->store_id)
+            ->where('active', 1)
             ->where(function ($query) use ($category) {
                 if ($category) {
                     return $query->where('category_id', $category);
