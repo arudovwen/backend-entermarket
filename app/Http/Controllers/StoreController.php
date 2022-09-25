@@ -7,6 +7,7 @@ use Mail;
 use Validator;
 use Spatie\Geocoder\Geocoder;
 use App\Models\Store;
+use App\Models\Order;
 use App\Models\StoreOrder;
 use Illuminate\Http\Request;
 use App\Services\StoreService;
@@ -237,6 +238,9 @@ class StoreController extends Controller
 
     public function markorder($id){
         $storeorder = StoreOrder::find($id);
+        $order = Order::where("name", $storeorder->name)->first();
+        $order->logistic_status = 'delivered';
+        $order->status = 'delivered';
         $storeorder->status = 'delivered';
         $storeorder->save();
     }

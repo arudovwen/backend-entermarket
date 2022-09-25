@@ -128,7 +128,7 @@ class OrderController extends Controller
     }
     public function webstore(Request $request)
     {
-
+      
         return DB::transaction(function () use ($request) {
 
             $name = $request->input('name') ? $request->input('name') : 'Order-' . rand(0000, 9999);
@@ -221,6 +221,9 @@ class OrderController extends Controller
         $order->status = $request->status;
         if ($request->status === 'delivered') {
             $order->status = 'delivered';
+            $storeorder = StoreOrder::where("name", $order->name)->first();
+            $order->logistic_status = 'delivered';
+            $storeorder->status = 'delivered';
         }
 
 
@@ -229,7 +232,7 @@ class OrderController extends Controller
     }
     public function assignlogistic(Request $request, Order $order)
     {
-
+        $storeorder = StoreOrder::where("name", $order->name)->first(); 
         if ($request->has('status') && $request->filled('status')) {
             $order->status = $request->status;
         }
@@ -238,9 +241,12 @@ class OrderController extends Controller
         }
         if ($request->has('logistic_status') && $request->filled('logistic_status')) {
             $order->logistic_status = $request->logistic_status;
+           
+            $storeorder->status = $request->logistic_status;
         }
         if ($request->logistic_status === 'delivered') {
             $order->status = 'delivered';
+            $storeorder->status = $request->logistic_status;
         }
         if ($request->has('view_at') && $request->filled('view_at')) {
             $order->view_at = Carbon::now();
