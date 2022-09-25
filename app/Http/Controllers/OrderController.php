@@ -55,7 +55,7 @@ class OrderController extends Controller
     }
     public function adminordersfailed()
     {
-        return Order::with('orderhistories', 'orderinfo')->where('status', 'failed')->where('payment_status', 'paid')->latest()->paginate(20);
+        return Order::with('orderhistories', 'orderinfo')->where('logistic_status', 'failed')->where('payment_status', 'paid')->latest()->paginate(20);
     }
     public function adminorderscompleted()
     {
@@ -320,16 +320,16 @@ class OrderController extends Controller
     {
         $query = $request->get('query');
         if (!is_null($query)) {
-            return  OrderResource::collection(Order::whereLike('order_no', $query)->orWhere('name', 'LIKE', "%{$query}%")->orWhere('weight', $query)->where('status', 'failed')->with('orderhistories', 'orderinfo')->paginate(20));
+            return  OrderResource::collection(Order::whereLike('order_no', $query)->orWhere('name', 'LIKE', "%{$query}%")->orWhere('weight', $query)->where('logistic_status', 'failed')->with('orderhistories', 'orderinfo')->paginate(20));
         }
-        return OrderResource::collection(Order::with('orderhistories', 'orderinfo')->where('status', 'failed')->where('payment_status', 'paid')->latest()->paginate(20));
+        return OrderResource::collection(Order::with('orderhistories', 'orderinfo')->where('logistic_status', 'failed')->where('payment_status', 'paid')->latest()->paginate(20));
     }
     public function searchfailedbydate(Request $request)
     {
         $start = $request->start;
         $end = $request->end;
 
-        return   OrderResource::collection(Order::whereBetween('created_at', [$start, $end])->where('status', 'failed')->with('orderhistories', 'orderinfo')->paginate(20));
+        return   OrderResource::collection(Order::whereBetween('created_at', [$start, $end])->where('logistic_status', 'failed')->with('orderhistories', 'orderinfo')->paginate(20));
     }
 
 
