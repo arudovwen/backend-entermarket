@@ -121,7 +121,7 @@ class StoreController extends Controller
 
         $validator = Validator::make($request->all(), [
             'email' => 'bail|required|email:rfc,dns',
-            'password' => 'required|min:6|alpha_dash',
+            'password' => 'required|min:6',
         ]);
 
         if ($validator->fails()) {
