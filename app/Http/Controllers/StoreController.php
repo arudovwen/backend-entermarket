@@ -69,7 +69,7 @@ class StoreController extends Controller
     public function update(Request $request)
     {
         $store = auth('store_api')->user();
-       
+
         try {
             if ($request->has('name') && $request->filled('name')) {
                 $store->name = $request->name;
@@ -86,11 +86,11 @@ class StoreController extends Controller
                 $geocoder = new Geocoder($client);
                 $geocoder->setApiKey(config('geocoder.key'));
                 // $geocoder->setCountry(config('geocoder.country', 'Nigeria'));
-               $response = $geocoder->getCoordinatesForAddress($request->location);
-            
+                $response = $geocoder->getCoordinatesForAddress($request->location);
+
                 $store->location = $request->location;
-              
-                $store->lat =$response['lat'];
+
+                $store->lat = $response['lat'];
                 $store->long = $response['lng'];
                 $store->place =  $response['address_components'][2]->long_name;
             }
@@ -223,7 +223,7 @@ class StoreController extends Controller
 
         return $this->storeservice->searchsite($request);
     }
-    
+
     public function changestatus(Request $request, $id)
     {
         $store = Store::find($id);
@@ -236,12 +236,22 @@ class StoreController extends Controller
         ];
     }
 
-    public function markorder($id){
+    public function markorder($id)
+    {
         $storeorder = StoreOrder::find($id);
         $order = Order::where("name", $storeorder->name)->first();
         $order->logistic_status = 'delivered';
         $order->status = 'delivered';
         $storeorder->status = 'delivered';
+        $storeorder->save();
+    }
+    public function markorderfailed($id)
+    {
+        $storeorder = StoreOrder::find($id);
+        $order = Order::where("name", $storeorder->name)->first();
+        $order->logistic_status = 'failed';
+        $order->status = 'failed';
+        $storeorder->status = 'failed';
         $storeorder->save();
     }
 }

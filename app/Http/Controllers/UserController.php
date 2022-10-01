@@ -130,7 +130,7 @@ class UserController extends Controller
                     "error" => $responseMessage
                 ], 422);
             }
-
+        
             $accessToken = auth()->user()->createToken('authToken')->accessToken;
             $responseMessage = "login successful";
             $data = [
@@ -415,7 +415,7 @@ class UserController extends Controller
 
             $user->country  = $request->country;
         }
-        if ($request->has('phoneNumber') && $request->filled('phoneNumber') && !is_null($request->input('phoneNumber'))) {
+        if ($request->has('phone') && $request->filled('phone') && !is_null($request->input('phone'))) {
             $user->phoneNumber = $request->phone;
         }
         if ($request->has('profileImage') && $request->filled('profileImage') && !is_null($request->input('profileImage'))) {

@@ -135,6 +135,7 @@ Route::middleware('auth:store_api')->get('store/earnings', [StoreOrderController
 Route::middleware('auth:store_api')->get('top/earnings', [StoreOrderController::class, 'gettopearner']);
 Route::middleware('auth:store_api')->get('store/get/products', [StoreController::class, 'storegetproducts']);
 Route::middleware('auth:store_api')->apiResource('storeorders', StoreOrderController::class);
+Route::middleware('auth:store_api')->post('wishlist/item', [WishlistController::class, 'storeitem']);
 
 
 Route::apiResource('stores', StoreController::class);
@@ -149,10 +150,9 @@ Route::post('search/products', [ProductController::class, 'searchproducts']);
 Route::get('similar/products/{id}', [ProductController::class, 'getsimilarproducts']);
 Route::middleware('auth:store_api')->post('product/add', [ProductController::class, 'store']);
 Route::apiResource('products', ProductController::class);
-
+Route::post('bulkupload', [ProductController::class, 'uploadproducts']);
 //Wishlist routes
 Route::post('clear/wishlists', [WishlistController::class, 'destroyall']);
-Route::post('wishlist/item', [WishlistController::class, 'storeitem']);
 
 Route::delete('wishlist/item/{wishlistitem}', [WishlistController::class, 'destroyitem']);
 Route::apiResource('wishlists', WishlistController::class);
@@ -250,5 +250,6 @@ Route::get('get-lga-price/{id}/{storeId}', [LgaPriceController::class, 'getlgapr
 
 Route::apiResource('lga-prices', LgaPriceController::class);
 Route::get('mark-order-complete/{id}', [StoreController::class, 'markorder']);
+Route::get('mark-order-failed/{id}', [StoreController::class, 'markorderfailed']);
 
 Route::apiResource('logistics', LogisticController::class);

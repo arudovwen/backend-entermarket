@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Http\Resources\ProductResource;
+use App\Imports\ProductsImport;
 
 class ProductController extends Controller
 {
@@ -120,6 +122,12 @@ class ProductController extends Controller
         if (!empty($request->input('weight')) && $request->filled('weight')  && $request->has('weight')) {
             $product->weight = $request->weight;
         }
+        if (!empty($request->input('category_id')) && $request->filled('category_id')  && $request->has('category_id')) {
+            $product->category_id = $request->category_id;
+        }
+        if (!empty($request->input('brand_id')) && $request->filled('brand_id')  && $request->has('brand_id')) {
+            $product->brand_id = $request->brand_id;
+        }
 
 
         $product->save();
@@ -136,6 +144,12 @@ class ProductController extends Controller
         })->values()->all();
     }
 
+    public function uploadproducts(Request $request)
+    {
+     
+        Excel::import(new ProductsImport(), request()->file('file'));
+        return response("okay");
+    }
     public function destroy(Product $product)
     {
         $id = $product->id;
