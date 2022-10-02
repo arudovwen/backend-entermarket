@@ -29,7 +29,7 @@ class OrderCanceled extends Notification implements ShouldQueue
      */
     public function via($notifiable)
     {
-        return ['database'];
+        return ['database',  "mail"];
     }
 
     /**
@@ -41,9 +41,8 @@ class OrderCanceled extends Notification implements ShouldQueue
     public function toMail($notifiable)
     {
         return (new MailMessage)
-            ->line('The introduction to the notification.')
-            ->action('Notification Action', url('/'))
-            ->line('Thank you for using our application!');
+            ->subject('Order Cancellation')
+            ->line($this->detail['message']);
     }
 
     /**
