@@ -136,6 +136,7 @@ Route::middleware('auth:store_api')->get('top/earnings', [StoreOrderController::
 Route::middleware('auth:store_api')->get('store/get/products', [StoreController::class, 'storegetproducts']);
 Route::middleware('auth:store_api')->apiResource('storeorders', StoreOrderController::class);
 Route::middleware('auth:store_api')->post('wishlist/item', [WishlistController::class, 'storeitem']);
+Route::middleware('auth:store_api')->get('store/get/order/{status}', [StoreOrderController::class, 'storegetorderbystatus']);
 
 
 Route::apiResource('stores', StoreController::class);

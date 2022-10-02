@@ -24,7 +24,11 @@ class StoreOrderController extends Controller
     {
         return auth('store_api')->user()->storeorders()->with('product', 'orderinfo', 'orderhistories', 'myorder')->where('payment_status', 'paid')->latest()->get();
     }
-
+    public function storegetorderbystatus($status)
+    {
+        return auth('store_api')->user()->storeorders()->with('product', 'orderinfo', 'orderhistories', 'myorder')->where('payment_status', 'paid')->where('status', $status)->latest()->get();
+    }
+    
     public function gettotals()
     {
         $store = auth('store_api')->user();
