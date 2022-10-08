@@ -152,358 +152,371 @@ class BankDetailController extends Controller
     public function verifytransaction($reference)
     {
 
-        return  DB::transaction(function () use ($reference) {
+        try {
+            return  DB::transaction(function () use ($reference) {
 
-            $transaction = Transaction::where('reference', $reference)->first();
-            if ($transaction->mode == 'flutterwave') {
-                $response =  Http::withHeaders([
-                    'Authorization' => 'Bearer ' . config('services.flutter.sk'),
-                ])->get(
-                    'https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=' . $reference
-                );
-
-                if ($response['data']['status'] !== 'successful') {
+                $transaction = Transaction::where('reference', $reference)->first();
+                if (is_null($transaction)) {
                     return response()->json([
                         'status' => false,
                         'message' => 'Invalid reference'
                     ]);
                 }
-            }
+                if ($transaction->mode == 'flutterwave') {
+                    $response =  Http::withHeaders([
+                        'Authorization' => 'Bearer ' . config('services.flutter.sk'),
+                    ])->get(
+                        'https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=' . $reference
+                    );
 
-            $payment = Payment::where('reference', $reference)->first();
-            $initialorder = Order::where('order_no', $transaction->order_id)->first();
+                    if ($response['data']['status'] !== 'successful') {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Invalid reference'
+                        ]);
+                    }
+                }
+
+                $payment = Payment::where('reference', $reference)->first();
+                $initialorder = Order::where('order_no', $transaction->order_id)->first();
 
 
-            if ($transaction) {
-                if (strtolower($transaction->message) === 'verification successful') {
+                if ($transaction) {
+                    if (strtolower($transaction->message) === 'verification successful') {
+                        return response()->json([
+                            'status' => true,
+                            'message' => 'Verification successful',
+                            'data' =>  Order::with('orderinfo', 'orderhistories')->where('name', $initialorder->name)->get(),
+                            'type' => 'order'
+                        ]);
+                    }
+                    $transaction->message = 'verification successful';
+                    $transaction->status = 'success';
+                    $transaction->save();
+
+                    //   if ($response->json()['status'] == 'success') {
+                    $orders = Order::with('orderinfo', 'orderhistories')->where('name', $initialorder->name)->get();
+                    $firstorder = $orders[0];
+                    foreach ($orders as $order) {
+                        $order->payment_status = 'paid';
+                        $order->save();
+                    }
+
+                    $StoreOrders = StoreOrder::where('name', $firstorder->name)->get();
+                    foreach ($StoreOrders as $StoreOrder) {
+                        $StoreOrder->payment_status = 'paid';
+                        $StoreOrder->save();
+                    }
+
+
+                    $cartservice = new CartService;
+                    $user = User::find($firstorder->user_id);
+                    $cartservice->clearcart($user);
+                    $detail = [
+                        'message' => 'Your order with order number #' . $firstorder->order_no . ' has been created and is being processed',
+                        'url' => 'https://entermarket.net/profile?showing=4'
+                    ];
+
+                    $details = [
+                        'message' => 'There is a new pending order with order number #' . $firstorder->order_no,
+                        'url' => 'https://admin12xx.entermarket.net/orders/pending'
+                    ];
+                    $admin = Admin::find(1);
+
+                    $user->notify(new OrderCreated($detail));
+                    $admin->notify(new NewOrderAlert($details));
+                    // } else {
+                    //     $order = Order::find($transaction->order_id);
+                    //     $order->payment_status = 'failed';
+                    //     $order->save();
+                    //     StoreOrder::where('order_no', $order->order_no)->update(['payment_status' => 'failed']);
+                    // }
+
                     return response()->json([
                         'status' => true,
                         'message' => 'Verification successful',
-                        'data' =>  Order::with('orderinfo', 'orderhistories')->where('name', $initialorder->name)->get(),
+                        'data' => $orders,
                         'type' => 'order'
                     ]);
-                }
-                $transaction->message = 'verification successful';
-                $transaction->status = 'success';
-                $transaction->save();
-
-                //   if ($response->json()['status'] == 'success') {
-                $orders = Order::with('orderinfo', 'orderhistories')->where('name', $initialorder->name)->get();
-                $firstorder = $orders[0];
-                foreach ($orders as $order) {
-                    $order->payment_status = 'paid';
-                    $order->save();
-                }
-
-                $StoreOrders = StoreOrder::where('name', $firstorder->name)->get();
-                foreach ($StoreOrders as $StoreOrder) {
-                    $StoreOrder->payment_status = 'paid';
-                    $StoreOrder->save();
-                }
+                } else if ($payment) {
 
 
-                $cartservice = new CartService;
-                $user = User::find($firstorder->user_id);
-                $cartservice->clearcart($user);
-                $detail = [
-                    'message' => 'Your order with order number #' . $firstorder->order_no . ' has been created and is being processed',
-                    'url' => 'https://entermarket.net/profile?showing=4'
-                ];
-
-                $details = [
-                    'message' => 'There is a new pending order with order number #' . $firstorder->order_no,
-                    'url' => 'https://admin12xx.entermarket.net/orders/pending'
-                ];
-                $admin = Admin::find(1);
-
-                $user->notify(new OrderCreated($detail));
-                $admin->notify(new NewOrderAlert($details));
-                // } else {
-                //     $order = Order::find($transaction->order_id);
-                //     $order->payment_status = 'failed';
-                //     $order->save();
-                //     StoreOrder::where('order_no', $order->order_no)->update(['payment_status' => 'failed']);
-                // }
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Verification successful',
-                    'data' => $orders,
-                    'type' => 'order'
-                ]);
-            } else if ($payment) {
+                    if ($payment->status === 'pending') {
 
 
-                if ($payment->status === 'pending') {
+                        if ($payment->type === 'airtime') {
+                            $body = [
+                                'network' => strtoupper($payment->network),
+                                'amount' => $payment->amount * 100,
+                                'mobile_number' => $payment->number,
+                                'pin' => $this->pin
+                            ];
 
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/buy-airtime',
+                                $body
+                            );
 
-                    if ($payment->type === 'airtime') {
-                        $body = [
-                            'network' => strtoupper($payment->network),
-                            'amount' => $payment->amount * 100,
-                            'mobile_number' => $payment->number,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/buy-airtime',
-                            $body
-                        );
-
-                        if ($response->status() !== 200 && $response->status() !== 201 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
+                            if ($response->status() !== 200 && $response->status() !== 201 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
                         }
-                        $responsedata = $response->json();
-                        if ($responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
+                        if ($payment->type === 'data') {
+                            $body = [
+                                'paymentCode' => $payment->paymentCode,
+                                'amount' => $payment->amount * 100,
+                                'mobile_number' => $payment->number,
+                                'pin' => $this->pin
+                            ];
+
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/buy-data-2',
+                                $body
+                            );
+                            if ($response->status() !== 200 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata && $responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
                         }
+                        if ($payment->type === 'electricity') {
+                            $body = [
+                                'customerid' => $payment->customerid,
+                                'amount' => $payment->amount * 100,
+                                'paymentCode' => $payment->paymentCode,
+                                'pin' => $this->pin
+                            ];
+
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/buy-electricity',
+                                $body
+                            );
+                            if ($response->status() !== 200 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata && $responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
+                        }
+                        if ($payment->type === 'internet') {
+                            $body = [
+                                'customerid' => $payment->customerid,
+                                'amount' => $payment->amount * 100,
+                                'paymentCode' => $payment->paymentCode,
+                                'pin' => $this->pin
+                            ];
+
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/buy-internet',
+                                $body
+                            );
+                            if ($response->status() !== 200 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata && $responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
+                        }
+                        if ($payment->type === 'cable') {
+
+                            $body = [
+                                'customerid' => $payment->customerid,
+                                'amount' => $payment->amount * 100,
+                                'paymentCode' => $payment->paymentCode,
+                                'pin' => $this->pin
+                            ];
+
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/buy-tv',
+                                $body
+                            );
+                            if ($response->status() !== 200 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata && $responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
+                        }
+                        if ($payment->type === 'betting') {
+                            $body = [
+                                'customerid' => $payment->customerid,
+                                'amount' => $payment->amount * 100,
+                                'paymentCode' => $payment->paymentCode,
+                                'pin' => $this->pin
+                            ];
+
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/bet',
+                                $body
+                            );
+                            if ($response->status() !== 200 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata && $responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
+                        }
+                        if ($payment->type === 'software') {
+                            $body = [
+                                'network' => strtoupper($payment->network),
+                                'amount' => $payment->amount * 100,
+                                'mobile_number' => $payment->number,
+                                'pin' => $this->pin
+                            ];
+
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/buy-data',
+                                $body
+                            );
+                            if ($response->status() !== 200 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata && $responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
+                        }
+                        if ($payment->type === 'education') {
+                            $body = [
+                                'network' => strtoupper($payment->network),
+                                'amount' => $payment->amount * 100,
+                                'mobile_number' => $payment->number,
+                                'pin' => $this->pin
+                            ];
+
+                            $response =  Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $payment->token,
+                            ])->post(
+                                'https://apis.payviame.com/api/buy-data',
+                                $body
+                            );
+                            if ($response->status() !== 200 && $response->status() !== 201) {
+                                return response(['message' => $response['message']], 500);
+                            }
+                            $responsedata = $response->json();
+                            if ($responsedata && $responsedata['status'] === 'success') {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            } else {
+                                $payment->status = $response->json()['status'];
+                                $payment->message = $response->json()['message'];
+                                $payment->transactionRef = $responsedata['transactionRef'];
+                                $payment->save();
+                            }
+                        }
+                    } else {
+                        return response()->json([
+                            'status' => true,
+                            'message' => $payment->status,
+                            'data' => $payment,
+                            'type' => 'payment',
+
+                        ]);
                     }
-                    if ($payment->type === 'data') {
-                        $body = [
-                            'paymentCode' => $payment->paymentCode,
-                            'amount' => $payment->amount * 100,
-                            'mobile_number' => $payment->number,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/buy-data-2',
-                            $body
-                        );
-                        if ($response->status() !== 200 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
-                        }
-                        $responsedata = $response->json();
-                        if ($responsedata && $responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        }
-                    }
-                    if ($payment->type === 'electricity') {
-                        $body = [
-                            'customerid' => $payment->customerid,
-                            'amount' => $payment->amount * 100,
-                            'paymentCode' => $payment->paymentCode,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/buy-electricity',
-                            $body
-                        );
-                        if ($response->status() !== 200 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
-                        }
-                        $responsedata = $response->json();
-                        if ($responsedata && $responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        }
-                    }
-                    if ($payment->type === 'internet') {
-                        $body = [
-                            'customerid' => $payment->customerid,
-                            'amount' => $payment->amount * 100,
-                            'paymentCode' => $payment->paymentCode,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/buy-internet',
-                            $body
-                        );
-                        if ($response->status() !== 200 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
-                        }
-                        $responsedata = $response->json();
-                        if ($responsedata && $responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        }
-                    }
-                    if ($payment->type === 'cable') {
-
-                        $body = [
-                            'customerid' => $payment->customerid,
-                            'amount' => $payment->amount * 100,
-                            'paymentCode' => $payment->paymentCode,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/buy-tv',
-                            $body
-                        );
-                        if ($response->status() !== 200 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
-                        }
-                        $responsedata = $response->json();
-                        if ($responsedata && $responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        }
-                    }
-                    if ($payment->type === 'betting') {
-                        $body = [
-                            'customerid' => $payment->customerid,
-                            'amount' => $payment->amount * 100,
-                            'paymentCode' => $payment->paymentCode,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/bet',
-                            $body
-                        );
-                        if ($response->status() !== 200 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
-                        }
-                        $responsedata = $response->json();
-                        if ($responsedata && $responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        }
-                    }
-                    if ($payment->type === 'software') {
-                        $body = [
-                            'network' => strtoupper($payment->network),
-                            'amount' => $payment->amount * 100,
-                            'mobile_number' => $payment->number,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/buy-data',
-                            $body
-                        );
-                        if ($response->status() !== 200 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
-                        }
-                        $responsedata = $response->json();
-                        if ($responsedata && $responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        }
-                    }
-                    if ($payment->type === 'education') {
-                        $body = [
-                            'network' => strtoupper($payment->network),
-                            'amount' => $payment->amount * 100,
-                            'mobile_number' => $payment->number,
-                            'pin' => $this->pin
-                        ];
-
-                        $response =  Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $payment->token,
-                        ])->post(
-                            'https://apis.payviame.com/api/buy-data',
-                            $body
-                        );
-                        if ($response->status() !== 200 && $response->status() !== 201) {
-                            return response(['message' => $response['message']], 500);
-                        }
-                        $responsedata = $response->json();
-                        if ($responsedata && $responsedata['status'] === 'success') {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        } else {
-                            $payment->status = $response->json()['status'];
-                            $payment->message = $response->json()['message'];
-                            $payment->transactionRef = $responsedata['transactionRef'];
-                            $payment->save();
-                        }
-                    }
-                } else {
+                    $newToken = $this->refreshtoken($payment->token);
                     return response()->json([
                         'status' => true,
-                        'message' => $payment->status,
+                        'message' => 'Verification successful',
+                        'new_token' => $newToken,
                         'data' => $payment,
                         'type' => 'payment',
-
+                        'response' => $responsedata
+                    ]);
+                } else {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Invalid reference'
                     ]);
                 }
-                $newToken = $this->refreshtoken($payment->token);
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Verification successful',
-                    'new_token' => $newToken,
-                    'data' => $payment,
-                    'type' => 'payment',
-                    'response' => $responsedata
-                ]);
-            } else {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Invalid reference'
-                ]);
-            }
-        });
+            });
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid reference'
+            ]);
+        }
     }
 
     public function refreshtoken($token)
