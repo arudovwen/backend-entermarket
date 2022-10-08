@@ -120,6 +120,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('handle/payment', [BankDetailController::class, 'paybypayviame1']);
     Route::get('refresh/token/{token}', [BankDetailController::class, 'refreshtoken']);
     Route::get('add-wishlist/{wishlist}', [WishlistController::class, 'addlisttocart']);
+    Route::post('wishlist/item', [WishlistController::class, 'storeitem']);
 });
 Route::get('transaction/verify/{reference}', [BankDetailController::class, 'verifytransaction']);
 
@@ -135,7 +136,7 @@ Route::middleware('auth:store_api')->get('store/earnings', [StoreOrderController
 Route::middleware('auth:store_api')->get('top/earnings', [StoreOrderController::class, 'gettopearner']);
 Route::middleware('auth:store_api')->get('store/get/products', [StoreController::class, 'storegetproducts']);
 Route::middleware('auth:store_api')->apiResource('storeorders', StoreOrderController::class);
-Route::middleware('auth:store_api')->post('wishlist/item', [WishlistController::class, 'storeitem']);
+
 Route::middleware('auth:store_api')->get('store/get/order/{status}', [StoreOrderController::class, 'storegetorderbystatus']);
 
 

@@ -153,7 +153,23 @@ class BankDetailController extends Controller
     {
 
         return  DB::transaction(function () use ($reference) {
+
             $transaction = Transaction::where('reference', $reference)->first();
+            if ($transaction->mode == 'flutterwave') {
+                $response =  Http::withHeaders([
+                    'Authorization' => 'Bearer ' . config('services.flutter.sk'),
+                ])->get(
+                    'https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=' . $reference
+                );
+
+                if ($response['data']['status'] !== 'successful') {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Invalid reference'
+                    ]);
+                }
+            }
+
             $payment = Payment::where('reference', $reference)->first();
             $initialorder = Order::where('order_no', $transaction->order_id)->first();
 

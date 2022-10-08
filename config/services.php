@@ -63,6 +63,10 @@ return [
     'paystack' => [
         'sk' => env('PAYSTACK_SK', null),
         'pk' => env('PAYSTACK_PK', null)
+    ],
+    'flutter' => [
+        'sk' => env('FLUTTER_KEY', null),
+        'pk' => env('PAYSTACK_PK', null)
     ]
 
 
