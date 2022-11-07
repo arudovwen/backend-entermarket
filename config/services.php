@@ -65,9 +65,13 @@ return [
         'pk' => env('PAYSTACK_PK', null)
     ],
     'flutter' => [
+        
         'sk' => env('FLUTTER_KEY', null),
         'pk' => env('PAYSTACK_PK', null)
+    ],
+    'captcha' => [
+        'cap' => env('CAPTHCA_KEY_SERVER', null),
+        
     ]
-
 
 ];

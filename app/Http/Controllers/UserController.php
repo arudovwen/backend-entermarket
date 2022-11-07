@@ -18,6 +18,7 @@ use App\Notifications\NewUser;
 use App\Mail\PasswordResetMail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -42,7 +43,10 @@ class UserController extends Controller
                 'firstName' => 'required| alpha_num',
                 'lastName' => 'required| alpha_num',
                 'email' => 'bail|required|unique:users|email:rfc,dns',
-                'password' => 'required|min:6',
+                'password' => ['required', Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()],
                 'phoneNumber' => 'bail|required|unique:users|min:11|numeric'
             ]);
 
@@ -108,7 +112,8 @@ class UserController extends Controller
 
         $validator = Validator::make($request->all(), [
             'email' => 'bail|required|email:rfc,dns',
-            'password' => 'required|min:6',
+            'password' => 'required',
+            'token' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -117,7 +122,20 @@ class UserController extends Controller
                 'message' => $validator->messages()->toArray()
             ], 500);
         }
+        $data =  [
+            'response' => $request->token,
+            'secret' => config('services.captcha.cap'),
+        ];
 
+        $url = "https://www.google.com/recaptcha/api/siteverify?secret=6LfOUuciAAAAAGsU942Cx6BqIYSx2eqdD9BkdIQw&response=" . $request->token;
+        $response =  Http::post($url, $data);
+        if ($response["success"] == false) {
+
+            return response()->json([
+                'success' => false,
+                'message' => "Captcha verificarion failed"
+            ], 500);
+        }
         $credentials = $request->only(["email", "password"]);
         $user = User::where('email', $credentials['email'])->first();
         if ($user) {
@@ -130,7 +148,7 @@ class UserController extends Controller
                     "error" => $responseMessage
                 ], 422);
             }
-        
+
             $accessToken = auth()->user()->createToken('authToken')->accessToken;
             $responseMessage = "login successful";
             $data = [
