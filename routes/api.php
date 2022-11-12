@@ -36,9 +36,9 @@ use App\Http\Controllers\OrderHistoryController;
 |
 */
 
-// header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
-// header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization, Accept,charset,boundary,Content-Length');
-// header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization, Accept,charset,boundary,Content-Length');
+header('Access-Control-Allow-Origin: *');
 
 // User Routes
 Route::middleware('auth:api')->get('/user', function (Request $request) {
@@ -168,9 +168,10 @@ Route::get('removestories', [StoryController::class, 'remove']);
 
 Route::post('users/register', [UserController::class, 'register']);
 Route::post('users/login', [UserController::class, 'login'])->name('login');
+Route::post('mobile/login', [UserController::class, 'autologin'])->name('autologin');
 Route::get('users/logout', [UserController::class, 'logout'])->name('logout.user');
-Route::post('users/forgot-password', [UserController::class, 'postEmail']);
-Route::post('users/update-password', [UserController::class, 'updatePassword']);
+Route::post('forgot-password', [UserController::class, 'postEmail']);
+Route::post('update-password', [UserController::class, 'updatePassword']);
 Route::post('user/image', [UserController::class, 'storeUploads']);
 Route::delete('user/delete/{user}', [UserController::class, 'destroy']);
 Route::apiResource('otp', OtpController::class);

@@ -54,7 +54,7 @@ class UserController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'something went wrong',
+                    'message' => $validator->messages()->toArray(),
                     'error' => $validator->messages()->toArray()
                 ], 422);
             }
@@ -91,7 +91,7 @@ class UserController extends Controller
             $responseMessage = "registration successful";
 
             if ($user) {
-                return $this->login($request);
+                return $this->autologin($request);
             }
 
             return response()->json([
@@ -133,9 +133,69 @@ class UserController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => "Captcha verificarion failed"
+                'message' => "Captcha verification failed"
             ], 500);
         }
+        $credentials = $request->only(["email", "password"]);
+        $user = User::where('email', $credentials['email'])->first();
+        if ($user) {
+            if (!auth()->attempt($credentials)) {
+                $responseMessage = "invalid credentials";
+
+                return response()->json([
+                    "success" => false,
+                    "message" => $responseMessage,
+                    "error" => $responseMessage
+                ], 422);
+            }
+
+            $accessToken = auth()->user()->createToken('authToken')->accessToken;
+            $responseMessage = "login successful";
+            $data = [
+                'email' => 'entermarket2021@gmail.com',
+                'password' => 'almond.2',
+            ];
+            if ($request->has('cart') && $request->filled('cart')) {
+                if (count($request->cart)) {
+                    $this->addtocart($request->cart, $user);
+                }
+            }
+
+            //   $response =  Http::post('https://apis.payviame.com/api/auth/login', $data);
+            //   if($response->json()['status']== 'error') return response()->json([
+            //         "success" => false,
+            //         "message" => 'token error',
+
+            //     ], 422);
+            // $payviame_token = $response->json()['access_token'];
+            $payviame_token = 'token';
+
+            return $this->respondWithToken($accessToken, $payviame_token, $responseMessage, auth()->user());
+        } else {
+            $responseMessage = "invalid credentials";
+            return response()->json([
+                "success" => false,
+                "message" => $responseMessage,
+                "error" => $responseMessage
+            ], 422);
+        }
+    }
+    public function autologin(Request $request)
+    {
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'bail|required|email:rfc,dns',
+            'password' => 'required',
+
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->messages()->toArray()
+            ], 500);
+        }
+
         $credentials = $request->only(["email", "password"]);
         $user = User::where('email', $credentials['email'])->first();
         if ($user) {
@@ -285,7 +345,10 @@ class UserController extends Controller
 
 
         $request->validate([
-            'password' => 'required|min:6|alpha_dash',
+            'password' => ['required', Password::min(8)
+                ->mixedCase()
+                ->numbers()
+                ->symbols()],
             'confirmPassword' =>  'required',
 
         ]);
